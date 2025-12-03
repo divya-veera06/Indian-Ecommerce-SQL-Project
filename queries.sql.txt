@@ -1,0 +1,140 @@
+--show all customers
+SELECT * FROM customers;
+
+--Show all products in Electronics category
+SELECT * FROM products
+WHERE category = 'Electronics';
+
+--Show top 5 costliest products
+SELECT product_name, price
+FROM products
+ORDER BY price DESC
+LIMIT 5;
+
+Show customers from Bengaluru
+SELECT customer_name, city
+FROM customers
+WHERE city = 'Bengaluru';
+
+
+--Show all orders placed after June 2024
+SELECT * FROM orders
+WHERE order_date > '2024-06-01';
+
+
+--List orders with customer name
+SELECT o.order_id, o.order_date, c.customer_name
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id;
+
+--List order items with product names
+SELECT oi.order_id, p.product_name, oi.quantity
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id;
+
+--Show total amount paid per order
+SELECT o.order_id, c.customer_name, p.payment_amount
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+JOIN payments p ON o.order_id = p.order_id;
+
+--Show all delivered orders with customer details
+SELECT o.order_id, o.status, c.customer_name, c.city
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+WHERE o.status = 'Delivered';
+
+--Total number of orders
+SELECT COUNT(*) AS total_orders
+FROM orders;
+
+--Total number of customers per city
+SELECT city, COUNT(*) AS total_customers
+FROM customers
+GROUP BY city;
+
+
+--Total quantity sold per product
+SELECT p.product_name, SUM(oi.quantity) AS total_quantity_sold
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+GROUP BY p.product_id
+ORDER BY total_quantity_sold DESC;
+
+--Revenue per category
+SELECT p.category, SUM(oi.quantity * p.price) AS revenue
+FROM order_items oi
+JOIN products p ON oi.product_id = p.product_id
+GROUP BY p.category
+ORDER BY revenue DESC;
+
+--Monthly revenue
+SELECT DATE_FORMAT(payment_date, '%Y-%m') AS month,
+       SUM(payment_amount) AS monthly_revenue
+FROM payments
+GROUP BY month
+ORDER BY month;
+
+--Find customers who have placed more than 3 orders
+SELECT c.customer_name, COUNT(o.order_id) AS total_orders
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_id
+HAVING total_orders > 3;
+
+--Highest priced product per category
+SELECT category, product_name, price
+FROM products p
+WHERE price = (
+    SELECT MAX(price)
+    FROM products
+    WHERE category = p.category
+);
+--Show orders with status meaning
+SELECT order_id, status,
+CASE
+    WHEN status = 'Delivered' THEN 'Order Completed'
+    WHEN status = 'Shipped' THEN 'On The Way'
+    WHEN status = 'Cancelled' THEN 'Order Cancelled'
+    ELSE 'Processing'
+END AS status_description
+FROM orders;
+
+--Customers who never placed an order
+
+--Rank products based on revenue
+SELECT 
+    p.product_name,
+    SUM(oi.quantity * p.price) AS revenue,
+    RANK() OVER (ORDER BY SUM(oi.quantity * p.price) DESC) AS revenue_rank
+FROM products p
+JOIN order_items oi ON p.product_id = oi.product_id
+GROUP BY p.product_id;
+
+--CTE — find repeat customers (2+ orders)
+WITH order_count AS (
+    SELECT customer_id, COUNT(order_id) AS total_orders
+    FROM orders
+    GROUP BY customer_id
+)
+SELECT c.customer_name, total_orders
+FROM order_count oc
+JOIN customers c ON c.customer_id = oc.customer_id
+WHERE total_orders >= 2;
+
+--Find each customer’s latest order
+SELECT c.customer_name, o.order_id, o.order_date
+FROM customers c
+JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_date = (
+    SELECT MAX(order_date)
+    FROM orders
+    WHERE customer_id = c.customer_id
+);
+
+--Running total of revenue (window function)
+SELECT 
+    payment_date,
+    payment_amount,
+    SUM(payment_amount) OVER (ORDER BY payment_date) AS running_total
+FROM payments;
